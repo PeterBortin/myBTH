@@ -9,6 +9,7 @@
             --orange: #ff8c00;
             --black: #1a1a1a;
             --green: #00ff00;
+            --red: #ff4444;
         }
 
         body {
@@ -20,11 +21,12 @@
             align-items: center;
             padding: 20px;
             margin: 0;
+            user-select: none;
         }
 
         #screen {
-            width: 320px;
-            height: 200px;
+            width: 340px;
+            height: 220px;
             border: 4px solid var(--orange);
             background-color: #222;
             padding: 10px;
@@ -33,17 +35,19 @@
             box-shadow: 0 0 15px rgba(255, 140, 0, 0.3);
             font-size: 12px;
             border-radius: 10px;
+            box-sizing: border-box;
         }
 
-        .log-entry { margin-bottom: 5px; border-bottom: 1px solid #333; }
+        .log-entry { margin-bottom: 5px; border-bottom: 1px solid #333; line-height: 1.4; }
         .success { color: var(--green); }
+        .error { color: var(--red); }
         .info { color: #00ccff; }
 
         .controls {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
-            width: 320px;
+            width: 340px;
         }
 
         button {
@@ -55,6 +59,7 @@
             cursor: pointer;
             border-radius: 5px;
             text-transform: uppercase;
+            font-family: inherit;
         }
 
         button:active {
@@ -62,8 +67,13 @@
             background: #e67e00;
         }
 
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
         .status-bar {
-            width: 320px;
+            width: 340px;
             font-size: 10px;
             margin-bottom: 5px;
             display: flex;
@@ -76,24 +86,25 @@
     <h2>FLIPPER JS-EDITION</h2>
 
     <div class="status-bar">
-        <span>BT: READY</span>
+        <span id="api-status">API: CHECKING...</span>
         <span id="bt-status">DISCONNECTED</span>
     </div>
 
     <div id="screen">
-        <div class="log-entry">Waiting for command...</div>
+        <div class="log-entry info">System initializing...</div>
     </div>
 
     <div class="controls">
-        <button onclick="scanDevices()">Scan BLE</button>
+        <button id="scanBtn" onclick="scanDevices()">Scan BLE</button>
         <button onclick="readBattery()">Read Bat</button>
-        <button onclick="clearLogs()" style="background: #444; color: white;">Clear</button>
         <button onclick="getDeviceInfo()">Device Info</button>
+        <button onclick="clearLogs()" style="background: #444; color: white;">Clear</button>
     </div>
 
     <script>
         const screen = document.getElementById('screen');
         const btStatus = document.getElementById('bt-status');
+        const apiStatus = document.getElementById('api-status');
         let connectedDevice = null;
 
         function log(text, type = '') {
@@ -104,68 +115,91 @@
             screen.scrollTop = screen.scrollHeight;
         }
 
-        // Поиск любого устройства
+        // 1. Проверка поддержки при старте
+        window.onload = () => {
+            if (!navigator.bluetooth) {
+                apiStatus.innerText = 'API: NOT SUPPORTED';
+                apiStatus.classList.add('error');
+                log('CRITICAL: Web Bluetooth API not found!', 'error');
+                log('Use Chrome on Android/PC or Bluefy on iOS.', 'info');
+                document.getElementById('scanBtn').disabled = true;
+            } else {
+                apiStatus.innerText = 'API: OK (HTTPS)';
+                apiStatus.classList.add('success');
+                log('System ready. Press SCAN to find objects.');
+            }
+        };
+
+        // 2. Поиск устройств
         async function scanDevices() {
-            log('Starting scan...', 'info');
+            log('Requesting Bluetooth devices...', 'info');
             try {
-                // Ищем любые устройства (acceptAllDevices требует отсутствия filters)
+                // Пытаемся найти устройства. 
+                // acceptAllDevices требует указания всех сервисов, к которым хотим доступ, в optionalServices
                 connectedDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
                     optionalServices: ['battery_service', 'device_information']
                 });
 
-                log(`Found: ${connectedDevice.name || 'Unknown'}`, 'success');
-                btStatus.innerText = 'CONNECTED';
+                log(`Paired: ${connectedDevice.name || 'Unnamed Device'}`, 'success');
+                btStatus.innerText = 'PAIRED';
                 
                 connectedDevice.addEventListener('gattserverdisconnected', () => {
-                    log('Device disconnected', 'info');
+                    log('Device lost connection', 'error');
                     btStatus.innerText = 'DISCONNECTED';
+                    connectedDevice = null;
                 });
 
             } catch (error) {
-                log('Error: ' + error.message);
+                log('Error: ' + error.message, 'error');
+                console.error(error);
             }
         }
 
-        // Пример: Чтение уровня заряда батареи
+        // 3. Чтение батареи
         async function readBattery() {
-            if (!connectedDevice) return log('Connect first!', 'info');
+            if (!connectedDevice) return log('Error: No device paired!', 'error');
+
+            try {
+                log('Connecting to GATT server...');
+                const server = await connectedDevice.gatt.connect();
+                btStatus.innerText = 'CONNECTED';
+                
+                log('Accessing Battery Service...');
+                const service = await server.getPrimaryService('battery_service');
+                const char = await service.getCharacteristic('battery_level');
+                
+                log('Reading value...');
+                const value = await char.readValue();
+                log(`BATTERY LEVEL: ${value.getUint8(0)}%`, 'success');
+            } catch (error) {
+                log('GATT Error: ' + error.message, 'error');
+            }
+        }
+
+        // 4. Информация о железе
+        async function getDeviceInfo() {
+            if (!connectedDevice) return log('Error: No device paired!', 'error');
 
             try {
                 log('Connecting to GATT...');
                 const server = await connectedDevice.gatt.connect();
-                const service = await server.getPrimaryService('battery_service');
-                const char = await service.getCharacteristic('battery_level');
-                const value = await char.readValue();
-                
-                log(`Battery Level: ${value.getUint8(0)}%`, 'success');
-            } catch (error) {
-                log('Read Error: ' + error.message);
-            }
-        }
-
-        // Пример: Чтение информации об устройстве
-        async function getDeviceInfo() {
-            if (!connectedDevice) return log('Connect first!', 'info');
-
-            try {
-                log('Reading Info...');
-                const server = await connectedDevice.gatt.connect();
                 const service = await server.getPrimaryService('device_information');
                 
-                // Пробуем прочитать производителя (Characteristic 0x2A29)
+                // UUID для названия производителя: 0x2A29
                 const char = await service.getCharacteristic('manufacturer_name_string');
                 const value = await char.readValue();
                 const decoder = new TextDecoder('utf-8');
                 
-                log(`Maker: ${decoder.decode(value)}`, 'success');
+                log(`MANUFACTURER: ${decoder.decode(value)}`, 'success');
             } catch (error) {
-                log('Info Error: ' + error.message);
+                log('Info Error: ' + error.message, 'error');
+                log('Service not available on this device.', 'info');
             }
         }
 
         function clearLogs() {
-            screen.innerHTML = '<div class="log-entry">Logs cleared.</div>';
+            screen.innerHTML = '<div class="log-entry">Terminal reset.</div>';
         }
     </script>
 </body>
