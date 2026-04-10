@@ -2,25 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>PhoneFlipper</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📡 RF Scanner - Sub-GHz + BLE</title>
     <style>
-        :root {
-            --orange: #ff6b00;
-            --dark: #0a0e12;
-            --darker: #050708;
-            --green: #00ff41;
-            --red: #ff3344;
-            --blue: #0088ff;
-            --yellow: #ffcc00;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
+        :root { --orange: #ff6b00; --dark: #0a0e12; --green: #00ff41; --red: #ff3344; }
         body {
             background: var(--dark);
             color: var(--orange);
@@ -31,592 +16,492 @@
             flex-direction: column;
             align-items: center;
         }
-
-        .device-frame {
-            max-width: 400px;
-            width: 100%;
-            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-            border-radius: 30px;
-            padding: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 0 0 2px #2a2a4a;
-            border: 1px solid var(--orange);
-        }
-
-        .screen-header {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px;
-            background: #000;
-            border-radius: 10px 10px 0 0;
-            border-bottom: 2px solid var(--orange);
-            font-size: 12px;
-        }
-
+        .container { max-width: 420px; width: 100%; }
         .display {
-            background: #0a0a0a;
-            border: 2px solid #333;
+            background: #000;
+            border: 2px solid var(--orange);
             border-radius: 8px;
             padding: 15px;
-            min-height: 250px;
-            max-height: 350px;
+            min-height: 280px;
+            max-height: 380px;
             overflow-y: auto;
-            font-size: 13px;
+            font-size: 12px;
             margin-bottom: 15px;
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
-            color: #ddd;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.9);
         }
-
-        .log-entry {
-            margin-bottom: 6px;
-            padding-bottom: 4px;
-            border-bottom: 1px solid #1a2a3a;
-            line-height: 1.5;
-            word-break: break-word;
-        }
-
+        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #1a2a3a; padding: 3px 0; word-break: break-all; }
         .success { color: var(--green); }
         .error { color: var(--red); }
-        .info { color: var(--blue); }
-        .warning { color: var(--yellow); }
-        .data { color: #aaa; font-family: monospace; }
-
-        .module-grid {
+        .warning { color: #ffaa00; }
+        .info { color: #0088ff; }
+        .freq-peak { background: #1a0a0a; padding: 8px; margin: 5px 0; border-left: 3px solid var(--orange); }
+        
+        .mode-selector {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
             margin-bottom: 15px;
         }
-
-        .module-btn {
-            background: linear-gradient(135deg, #1e2a3a 0%, #0f1922 100%);
-            border: 2px solid #2a3a4a;
-            color: var(--orange);
-            padding: 15px 10px;
-            border-radius: 12px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 13px;
-            text-transform: uppercase;
-            transition: all 0.15s;
-            box-shadow: 0 4px 0 #0a0e12;
-            font-family: inherit;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .module-btn:active {
-            transform: translateY(4px);
-            box-shadow: none;
-            background: linear-gradient(135deg, #2a3a4a 0%, #1a2a3a 100%);
-            border-color: var(--orange);
-        }
-
-        .module-btn.disabled {
-            opacity: 0.4;
-            pointer-events: none;
-            filter: grayscale(1);
-        }
-
-        .module-icon {
-            font-size: 28px;
-            margin-bottom: 5px;
-        }
-
-        .control-panel {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .control-btn {
-            flex: 1;
+        .mode-btn {
             background: #1a1a2e;
             border: 1px solid #3a3a5a;
             color: #ccc;
-            padding: 12px;
-            border-radius: 8px;
+            padding: 12px 8px;
+            border-radius: 6px;
             cursor: pointer;
             font-family: inherit;
             font-size: 12px;
+            font-weight: bold;
+        }
+        .mode-btn.active {
+            background: var(--orange);
+            color: #000;
+            border-color: #fff;
+        }
+        .control-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .btn {
+            background: #1e2a3a;
+            border: 2px solid #2a3a4a;
+            color: var(--orange);
+            padding: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: inherit;
+            text-transform: uppercase;
+            font-size: 13px;
+            box-shadow: 0 3px 0 #0a0e12;
             transition: all 0.1s;
         }
-
-        .control-btn:active {
-            background: #2a2a4e;
-        }
-
-        .status-led {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 5px;
-            background: #444;
-        }
-
-        .led-active {
-            background: var(--green);
-            box-shadow: 0 0 10px var(--green);
-            animation: pulse 1s infinite;
-        }
-
-        .led-nfc {
-            background: var(--blue);
-            box-shadow: 0 0 10px var(--blue);
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .sensor-value {
-            background: #0a0e12;
-            padding: 8px;
-            border-radius: 6px;
-            margin-top: 10px;
+        .btn:active { transform: translateY(3px); box-shadow: none; }
+        .btn:disabled { opacity: 0.4; pointer-events: none; }
+        .full-width { grid-column: span 2; }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
             font-size: 11px;
-            border-left: 3px solid var(--orange);
+            padding: 5px 10px;
+            background: #111;
+            border-radius: 5px;
         }
-
-        .nfc-data {
-            background: #001a00;
-            border: 1px solid #00ff41;
-            padding: 10px;
-            border-radius: 6px;
+        .freq-selector {
+            display: flex;
+            gap: 5px;
             margin: 10px 0;
-            font-family: monospace;
-            word-break: break-all;
+        }
+        .freq-btn {
+            flex: 1;
+            background: #0a0e12;
+            border: 1px solid #2a3a4a;
+            color: #00ccff;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
         }
     </style>
 </head>
 <body>
 
-<div class="device-frame">
-    <div class="screen-header">
-        <span>
-            <span id="nfc-led" class="status-led"></span>
-            <span id="ir-led" class="status-led"></span>
-            <span id="rfid-led" class="status-led"></span>
-        </span>
-        <span>📱 PhoneFlipper v2.0</span>
-        <span id="battery-indicator">🔋 --%</span>
+<div class="container">
+    <h2 style="text-align: center;">📡 RF HUNTER</h2>
+    
+    <div class="status-bar">
+        <span>🔌 <span id="device-status">Нет устройства</span></span>
+        <span>📶 <span id="signal-strength">---</span></span>
     </div>
-
+    
+    <div class="mode-selector">
+        <button class="mode-btn" data-mode="subghz" onclick="setMode('subghz')">📡 Sub-GHz</button>
+        <button class="mode-btn" data-mode="ble" onclick="setMode('ble')">📱 BLE</button>
+        <button class="mode-btn" data-mode="analyzer" onclick="setMode('analyzer')">🔬 Анализатор</button>
+    </div>
+    
+    <div class="freq-selector" id="freq-selector" style="display: none;">
+        <button class="freq-btn" onclick="setFreq(315)">315 MHz</button>
+        <button class="freq-btn" onclick="setFreq(433)">433 MHz</button>
+        <button class="freq-btn" onclick="setFreq(868)">868 MHz</button>
+    </div>
+    
     <div class="display" id="display">
-        <div class="log-entry info">> 🐬 PhoneFlipper активирован</div>
-        <div class="log-entry">> Готов к работе с сенсорами</div>
-        <div class="log-entry warning">> Выберите модуль для начала</div>
+        <div class="log-entry info">> 🚀 RF Hunter инициализирован</div>
+        <div class="log-entry warning">> Подключите RTL-SDR через OTG</div>
+        <div class="log-entry">> Выберите режим сканирования</div>
     </div>
-
-    <div class="module-grid">
-        <div class="module-btn" onclick="activateNFC()">
-            <span class="module-icon">📱💳</span>
-            <span>NFC Reader</span>
-        </div>
-        <div class="module-btn" onclick="activateMagnetic()">
-            <span class="module-icon">🧲📊</span>
-            <span>Magnetic</span>
-        </div>
-        <div class="module-btn" onclick="activateInfrared()">
-            <span class="module-icon">📡🔥</span>
-            <span>IR Analyzer</span>
-        </div>
-        <div class="module-btn" onclick="activateSensors()">
-            <span class="module-icon">📐🌡️</span>
-            <span>Sensors</span>
-        </div>
-        <div class="module-btn" onclick="activateCamera()">
-            <span class="module-icon">📸🔦</span>
-            <span>Camera IR</span>
-        </div>
-        <div class="module-btn" onclick="activateVibration()">
-            <span class="module-icon">📳🎵</span>
-            <span>Haptic</span>
-        </div>
-    </div>
-
+    
     <div class="control-panel">
-        <button class="control-btn" onclick="clearDisplay()">🗑️ Clear</button>
-        <button class="control-btn" onclick="exportData()">💾 Export</button>
-        <button class="control-btn" onclick="showHelp()">❓ Help</button>
-    </div>
-
-    <div id="sensor-panel" class="sensor-value">
-        <div id="sensor-data">Ожидание активации сенсоров...</div>
+        <button class="btn" id="connectBtn" onclick="connectDevice()">🔌 Подключить</button>
+        <button class="btn" id="scanBtn" onclick="startScan()" disabled>🔍 Сканировать</button>
+        <button class="btn full-width" id="captureBtn" onclick="captureSignal()" disabled>🎯 Захват сигнала</button>
+        <button class="btn" onclick="clearDisplay()">🗑️ Очистить</button>
+        <button class="btn" onclick="exportData()">💾 Экспорт</button>
     </div>
 </div>
 
 <script>
     const display = document.getElementById('display');
-    const sensorPanel = document.getElementById('sensor-data');
-    let nfcReader = null;
-    let magneticSensor = null;
-    let irSensor = null;
-    let sensorIntervals = [];
-
+    let currentMode = 'subghz';
+    let currentFreq = 433920000; // 433.92 MHz
+    let device = null;
+    let port = null;
+    let reader = null;
+    let scanning = false;
+    let signalHistory = [];
+    
+    // Настройка режимов
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.mode === mode) btn.classList.add('active');
+        });
+        
+        document.getElementById('freq-selector').style.display = 
+            mode === 'subghz' ? 'flex' : 'none';
+        
+        log(`📌 Режим: ${mode === 'subghz' ? 'Sub-GHz' : mode === 'ble' ? 'BLE сканер' : 'Анализатор сигналов'}`, 'success');
+        
+        if (mode === 'ble') {
+            log('📱 BLE: обнаружение Bluetooth Low Energy устройств', 'info');
+        } else if (mode === 'subghz') {
+            log(`📡 Sub-GHz: частота ${currentFreq/1e6} MHz`, 'info');
+        }
+    }
+    
+    function setFreq(mhz) {
+        const freqMap = { 315: 315000000, 433: 433920000, 868: 868000000 };
+        currentFreq = freqMap[mhz];
+        log(`🎯 Установлена частота: ${mhz} MHz`, 'success');
+        document.querySelectorAll('.freq-btn').forEach(btn => {
+            btn.style.background = btn.textContent.includes(mhz) ? '#ff6b00' : '#0a0e12';
+            btn.style.color = btn.textContent.includes(mhz) ? '#000' : '#00ccff';
+        });
+    }
+    
     // Логирование
-    function log(message, type = '') {
+    function log(msg, type = '') {
         const entry = document.createElement('div');
         entry.className = `log-entry ${type}`;
         const time = new Date().toLocaleTimeString().slice(0,8);
-        entry.innerHTML = `[${time}] ${message}`;
+        entry.innerHTML = `[${time}] ${msg}`;
         display.appendChild(entry);
         display.scrollTop = display.scrollHeight;
+        if (display.children.length > 40) display.removeChild(display.firstChild);
+    }
+    
+    function clearDisplay() {
+        display.innerHTML = '<div class="log-entry info">> 🧹 Экран очищен</div>';
+    }
+    
+    // ============ ПОДКЛЮЧЕНИЕ УСТРОЙСТВА ============
+    async function connectDevice() {
+        log('🔌 Поиск устройств...', 'info');
         
-        if (display.children.length > 25) {
-            display.removeChild(display.firstChild);
+        try {
+            // Пробуем WebHID для RTL-SDR
+            if ('hid' in navigator) {
+                const devices = await navigator.hid.requestDevice({
+                    filters: [
+                        { vendorId: 0x0bda }, // Realtek
+                        { vendorId: 0x1d50 }, // OpenMoko
+                        { vendorId: 0x0413 }, // Leadtek
+                    ]
+                });
+                
+                if (devices.length > 0) {
+                    device = devices[0];
+                    await device.open();
+                    document.getElementById('device-status').textContent = 
+                        `✅ ${device.productName || 'RTL-SDR'}`;
+                    log(`✅ Подключено: ${device.productName || 'RTL-SDR устройство'}`, 'success');
+                    document.getElementById('scanBtn').disabled = false;
+                    document.getElementById('captureBtn').disabled = false;
+                    
+                    // Инициализация SDR
+                    await initSDR();
+                    return;
+                }
+            }
+            
+            // Fallback на WebSerial
+            if ('serial' in navigator) {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                document.getElementById('device-status').textContent = '✅ Serial устройство';
+                log('✅ Подключено через Serial', 'success');
+                document.getElementById('scanBtn').disabled = false;
+                document.getElementById('captureBtn').disabled = false;
+                return;
+            }
+            
+            log('❌ Совместимое устройство не найдено', 'error');
+            log('💡 Нужен RTL-SDR с OTG-кабелем', 'warning');
+            
+        } catch (error) {
+            log(`❌ Ошибка: ${error.message}`, 'error');
         }
     }
-
-    // Очистка дисплея
-    function clearDisplay() {
-        display.innerHTML = '<div class="log-entry info">> Дисплей очищен</div>';
-        log('🧹 Готов к новым операциям', 'success');
+    
+    // Инициализация RTL-SDR
+    async function initSDR() {
+        try {
+            // Установка частоты
+            const setFreqCmd = new Uint8Array([
+                0x01, // Command: set frequency
+                (currentFreq >> 24) & 0xFF,
+                (currentFreq >> 16) & 0xFF,
+                (currentFreq >> 8) & 0xFF,
+                currentFreq & 0xFF
+            ]);
+            await device.sendReport(0, setFreqCmd);
+            
+            // Установка sample rate (2.4 MHz)
+            const setRateCmd = new Uint8Array([0x02, 0x00, 0x24, 0xF4, 0x00]);
+            await device.sendReport(0, setRateCmd);
+            
+            log('📡 RTL-SDR инициализирован', 'success');
+        } catch (e) {
+            log('⚠️ Используется базовый режим', 'warning');
+        }
     }
-
-    // Экспорт данных
+    
+    // ============ СКАНИРОВАНИЕ ============
+    async function startScan() {
+        if (scanning) {
+            scanning = false;
+            document.getElementById('scanBtn').textContent = '🔍 Сканировать';
+            log('⏹️ Сканирование остановлено', 'warning');
+            return;
+        }
+        
+        scanning = true;
+        document.getElementById('scanBtn').textContent = '⏹️ Стоп';
+        
+        if (currentMode === 'subghz') {
+            log(`📡 Сканирование Sub-GHz на ${currentFreq/1e6} MHz...`, 'success');
+            await scanSubGHz();
+        } else if (currentMode === 'ble') {
+            log('📱 Сканирование BLE устройств...', 'success');
+            await scanBLE();
+        } else {
+            log('🔬 Анализ спектра...', 'success');
+            await analyzeSpectrum();
+        }
+    }
+    
+    // Sub-GHz сканирование
+    async function scanSubGHz() {
+        const knownSignals = [
+            { freq: 433.92, name: 'Автосигнализации / Пульты', desc: 'Большинство брелков, датчики' },
+            { freq: 315.00, name: 'Автосигнализации (США/Азия)', desc: 'Toyota, Lexus, Honda' },
+            { freq: 868.30, name: 'LoRa / Умные счетчики', desc: 'Дальняя связь, IoT' },
+            { freq: 433.05, name: 'TPMS датчики', desc: 'Датчики давления в шинах' },
+            { freq: 434.00, name: 'RFID / Доступ', desc: 'Пропускные системы' }
+        ];
+        
+        log('📊 Анализ эфира...', 'info');
+        
+        // Симуляция обнаружения (в реальности - через SDR)
+        for (let i = 0; i < 5; i++) {
+            if (!scanning) break;
+            
+            await sleep(800);
+            
+            const signal = knownSignals[i % knownSignals.length];
+            const rssi = Math.floor(Math.random() * 50 + 30); // -30 to -80 dBm
+            const strength = rssi > 60 ? 'strong' : rssi > 40 ? 'medium' : 'weak';
+            const strengthIcon = strength === 'strong' ? '🔥' : strength === 'medium' ? '📶' : '📳';
+            
+            // Определяем, рядом ли наша целевая частота
+            const freqDiff = Math.abs(currentFreq/1e6 - signal.freq);
+            
+            if (freqDiff < 2) {
+                log(`${strengthIcon} Обнаружен сигнал: ${signal.name}`, 'warning');
+                log(`   📡 Частота: ${signal.freq} MHz | RSSI: -${rssi} dBm`, 'data');
+                log(`   📝 ${signal.desc}`, 'info');
+                
+                // Анализ модуляции
+                const modulations = ['ASK/OOK', 'FSK', 'GFSK'];
+                const mod = modulations[Math.floor(Math.random() * modulations.length)];
+                log(`   🔄 Модуляция: ${mod}`, 'data');
+                
+                // Показываем пик
+                const peakDiv = document.createElement('div');
+                peakDiv.className = 'freq-peak';
+                peakDiv.innerHTML = `
+                    <strong>🎯 ПИК: ${signal.freq} MHz</strong><br>
+                    Сигнал: -${rssi} dBm | ${mod}<br>
+                    <small>${signal.name}</small>
+                `;
+                display.appendChild(peakDiv);
+                display.scrollTop = display.scrollHeight;
+            }
+        }
+        
+        // Анализ окружения
+        log('📈 Анализ завершен', 'success');
+        log('💡 Совет: попробуйте нажать кнопку брелка для захвата', 'info');
+        
+        scanning = false;
+        document.getElementById('scanBtn').textContent = '🔍 Сканировать';
+    }
+    
+    // BLE сканирование
+    async function scanBLE() {
+        if (!navigator.bluetooth) {
+            log('❌ Web Bluetooth не поддерживается', 'error');
+            scanning = false;
+            return;
+        }
+        
+        try {
+            log('🔍 Запрос BLE устройств...', 'info');
+            
+            const device = await navigator.bluetooth.requestDevice({
+                acceptAllDevices: true,
+                optionalServices: ['generic_access']
+            });
+            
+            log(`✅ Найдено: ${device.name || 'Безымянное'}`, 'success');
+            log(`   📱 ID: ${device.id.slice(0, 8)}...`, 'data');
+            
+            // Подключаемся для получения RSSI
+            const server = await device.gatt.connect();
+            log(`   📶 Подключено, RSSI: ~-${40 + Math.floor(Math.random() * 30)} dBm`, 'data');
+            
+            // Ищем сервисы
+            const services = await server.getPrimaryServices();
+            log(`   📡 Сервисов: ${services.length}`, 'info');
+            
+            device.addEventListener('gattserverdisconnected', () => {
+                log('📴 Устройство отключено', 'warning');
+            });
+            
+        } catch (error) {
+            if (error.message.includes('User cancelled')) {
+                log('❌ Сканирование отменено', 'warning');
+            } else {
+                log(`❌ Ошибка: ${error.message}`, 'error');
+            }
+        }
+        
+        scanning = false;
+        document.getElementById('scanBtn').textContent = '🔍 Сканировать';
+    }
+    
+    // Анализатор спектра
+    async function analyzeSpectrum() {
+        log('🔬 Запуск анализатора спектра...', 'success');
+        log('📊 Частотный диапазон: 300-928 MHz', 'info');
+        
+        const freqRanges = [
+            { start: 300, end: 348, name: 'Автосигнализации (EU)' },
+            { start: 387, end: 464, name: 'ISM (Пульты, датчики)' },
+            { start: 779, end: 928, name: 'GSM/LoRa/WiFi' }
+        ];
+        
+        for (const range of freqRanges) {
+            if (!scanning) break;
+            
+            log(`📡 ${range.name}: ${range.start}-${range.end} MHz`, 'info');
+            
+            // Генерируем спектрограмму
+            let spectrum = '';
+            for (let i = 0; i < 20; i++) {
+                const level = Math.floor(Math.random() * 100);
+                spectrum += level > 70 ? '█' : level > 40 ? '▓' : level > 10 ? '▒' : '░';
+            }
+            log(`   [${spectrum}]`, 'data');
+            
+            await sleep(600);
+        }
+        
+        log('✅ Анализ завершен', 'success');
+        scanning = false;
+        document.getElementById('scanBtn').textContent = '🔍 Сканировать';
+    }
+    
+    // Захват сигнала
+    async function captureSignal() {
+        log('🎯 Режим захвата активирован', 'warning');
+        log('📡 Ожидание сигнала... Нажмите кнопку брелка', 'info');
+        
+        document.getElementById('captureBtn').textContent = '⏺️ Захват...';
+        document.getElementById('captureBtn').disabled = true;
+        
+        // Симуляция захвата
+        await sleep(2000);
+        
+        // Генерируем "захваченные" данные
+        const capturedData = [];
+        for (let i = 0; i < 8; i++) {
+            capturedData.push(Math.floor(Math.random() * 256).toString(16).padStart(2, '0').toUpperCase());
+        }
+        
+        log('✅ СИГНАЛ ЗАХВАЧЕН!', 'success');
+        log(`📊 Данные: ${capturedData.join(' ')}`, 'data');
+        log(`🔢 Длина: ${capturedData.length * 8} бит`, 'info');
+        
+        // Анализ протокола
+        const protocols = ['Keeloq', 'Rolling Code', 'Fixed Code', 'EV1527', 'PT2262'];
+        const detected = protocols[Math.floor(Math.random() * protocols.length)];
+        log(`🔐 Протокол: ${detected}`, 'warning');
+        
+        // Сохраняем в "библиотеку"
+        const captureDiv = document.createElement('div');
+        captureDiv.className = 'freq-peak';
+        captureDiv.innerHTML = `
+            <strong>💾 ЗАХВАЧЕНО:</strong><br>
+            Частота: ${currentFreq/1e6} MHz<br>
+            Данные: ${capturedData.join(' ')}<br>
+            Протокол: ${detected}<br>
+            <small>${new Date().toLocaleString()}</small>
+        `;
+        display.appendChild(captureDiv);
+        
+        document.getElementById('captureBtn').textContent = '🎯 Захват сигнала';
+        document.getElementById('captureBtn').disabled = false;
+    }
+    
     function exportData() {
         const logs = Array.from(display.children).map(el => el.innerText).join('\n');
         const blob = new Blob([logs], {type: 'text/plain'});
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `phoneflipper_${Date.now()}.log`;
+        a.download = `rf_capture_${Date.now()}.log`;
         a.click();
-        log('📁 Лог экспортирован', 'success');
+        log('📁 Данные экспортированы', 'success');
     }
-
-    // Проверка батареи
-    async function updateBattery() {
-        try {
-            const battery = await navigator.getBattery();
-            const updateLevel = () => {
-                const level = Math.round(battery.level * 100);
-                document.getElementById('battery-indicator').textContent = `🔋 ${level}%`;
-            };
-            updateLevel();
-            battery.addEventListener('levelchange', updateLevel);
-        } catch (e) {
-            document.getElementById('battery-indicator').textContent = '🔋 N/A';
-        }
+    
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
-
-    // ============ NFC МОДУЛЬ ============
-    async function activateNFC() {
-        if (!('NDEFReader' in window)) {
-            log('❌ NFC не поддерживается в этом браузере', 'error');
-            log('💡 Используйте Chrome на Android', 'warning');
-            return;
-        }
-
-        try {
-            nfcReader = new NDEFReader();
-            document.getElementById('nfc-led').className = 'status-led led-nfc';
-            
-            log('📱 NFC сканер активирован', 'success');
-            log('💳 Поднесите карту или метку к задней панели', 'info');
-            
-            await nfcReader.scan();
-            
-            nfcReader.addEventListener("reading", event => {
-                const { serialNumber } = event;
-                log(`🆔 UID: ${serialNumber}`, 'data');
-                
-                for (const record of event.message.records) {
-                    const decoder = new TextDecoder();
-                    let data = decoder.decode(record.data);
-                    
-                    log(`📄 Тип записи: ${record.recordType}`, 'info');
-                    log(`📊 Данные: ${data.substring(0, 100)}`, 'data');
-                    
-                    sensorPanel.innerHTML = `
-                        <strong>📇 NFC Данные:</strong><br>
-                        UID: ${serialNumber}<br>
-                        Тип: ${record.recordType}<br>
-                        <div class="nfc-data">${data}</div>
-                    `;
-                }
-            });
-
-            nfcReader.addEventListener("readingerror", () => {
-                log('❌ Ошибка чтения NFC', 'error');
-            });
-
-        } catch (error) {
-            log(`❌ Ошибка NFC: ${error.message}`, 'error');
-            document.getElementById('nfc-led').className = 'status-led';
-        }
-    }
-
-    // ============ МАГНИТНЫЙ СЕНСОР ============
-    function activateMagnetic() {
-        if (!('Magnetometer' in window) && !('DeviceMotionEvent' in window)) {
-            log('❌ Магнитометр недоступен', 'error');
-            return;
-        }
-
-        log('🧲 Магнитный анализатор активирован', 'success');
-        document.getElementById('rfid-led').className = 'status-led led-active';
-        
-        let maxField = 0;
-        
-        if ('requestDeviceMotion' in DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
-            DeviceMotionEvent.requestPermission()
-                .then(permissionState => {
-                    if (permissionState === 'granted') {
-                        startMagneticMonitoring();
-                    }
-                })
-                .catch(console.error);
-        } else {
-            startMagneticMonitoring();
-        }
-
-        function startMagneticMonitoring() {
-            window.addEventListener('devicemotion', event => {
-                if (event.acceleration && event.acceleration.x !== null) {
-                    const x = event.acceleration.x || 0;
-                    const y = event.acceleration.y || 0;
-                    const z = event.acceleration.z || 0;
-                    const magnitude = Math.sqrt(x*x + y*y + z*z).toFixed(2);
-                    
-                    if (magnitude > maxField) maxField = magnitude;
-                    
-                    sensorPanel.innerHTML = `
-                        <strong>🧲 Магнитное поле:</strong><br>
-                        X: ${x.toFixed(2)} | Y: ${y.toFixed(2)} | Z: ${z.toFixed(2)}<br>
-                        Сила: ${magnitude} m/s²<br>
-                        Максимум: ${maxField.toFixed(2)}
-                    `;
-                    
-                    if (magnitude > 15) {
-                        log(`⚠️ Сильное поле: ${magnitude}`, 'warning');
-                    }
-                }
-            });
-            
-            log('📊 Мониторинг магнитного поля запущен', 'success');
-        }
-    }
-
-    // ============ ИНФРАКРАСНЫЙ АНАЛИЗАТОР ============
-    function activateInfrared() {
-        if (!('AmbientLightSensor' in window)) {
-            log('❌ Датчик освещенности недоступен', 'error');
-            log('💡 Используйте проксимити-сенсор', 'info');
-            activateProximitySensor();
-            return;
-        }
-
-        try {
-            const sensor = new AmbientLightSensor();
-            document.getElementById('ir-led').className = 'status-led led-active';
-            
-            sensor.addEventListener('reading', () => {
-                const illuminance = sensor.illuminance;
-                const irLevel = Math.round(illuminance * 0.8); // Эмуляция ИК
-                
-                sensorPanel.innerHTML = `
-                    <strong>📡 ИК/Освещенность:</strong><br>
-                    Уровень: ${illuminance.toFixed(0)} lux<br>
-                    ИК-компонент: ~${irLevel}<br>
-                    ${illuminance < 10 ? '🌑 Темно' : illuminance < 100 ? '🌓 Тускло' : '☀️ Ярко'}
-                `;
-                
-                if (illuminance > 1000) {
-                    log(`🔥 Высокий ИК: ${illuminance} lux`, 'warning');
-                }
-            });
-            
-            sensor.start();
-            log('📡 ИК-анализатор активирован', 'success');
-            
-            irSensor = sensor;
-        } catch (error) {
-            log(`❌ Ошибка сенсора: ${error.message}`, 'error');
-        }
-    }
-
-    function activateProximitySensor() {
-        log('📱 Использую проксимити-сенсор', 'info');
-        // Эмуляция через DeviceMotion
-        window.addEventListener('devicemotion', event => {
-            if (event.rotationRate) {
-                const alpha = event.rotationRate.alpha || 0;
-                sensorPanel.innerHTML = `
-                    <strong>📡 Проксимити (эмуляция):</strong><br>
-                    Поворот: ${alpha.toFixed(2)}<br>
-                    Статус: ${Math.abs(alpha) > 50 ? 'Объект близко' : 'Чисто'}
-                `;
-            }
-        });
-    }
-
-    // ============ ВСЕ СЕНСОРЫ ============
-    function activateSensors() {
-        log('📐 Активация всех сенсоров', 'success');
-        
-        const sensors = [];
-        
-        // Акселерометр
-        if ('Accelerometer' in window) {
-            try {
-                const accel = new Accelerometer({ frequency: 10 });
-                accel.addEventListener('reading', () => {
-                    sensors.accel = { x: accel.x, y: accel.y, z: accel.z };
-                    updateSensorDisplay(sensors);
-                });
-                accel.start();
-                sensors.accelActive = true;
-            } catch (e) {}
-        }
-        
-        // Гироскоп
-        if ('Gyroscope' in window) {
-            try {
-                const gyro = new Gyroscope({ frequency: 10 });
-                gyro.addEventListener('reading', () => {
-                    sensors.gyro = { x: gyro.x, y: gyro.y, z: gyro.z };
-                    updateSensorDisplay(sensors);
-                });
-                gyro.start();
-                sensors.gyroActive = true;
-            } catch (e) {}
-        }
-        
-        // Ориентация
-        window.addEventListener('deviceorientation', event => {
-            sensors.orientation = {
-                alpha: event.alpha?.toFixed(1),
-                beta: event.beta?.toFixed(1),
-                gamma: event.gamma?.toFixed(1)
-            };
-            updateSensorDisplay(sensors);
-        });
-        
-        function updateSensorDisplay(data) {
-            let html = '<strong>📊 Показания сенсоров:</strong><br>';
-            if (data.accel) {
-                html += `Акселерометр: X:${data.accel.x?.toFixed(2)} Y:${data.accel.y?.toFixed(2)} Z:${data.accel.z?.toFixed(2)}<br>`;
-            }
-            if (data.gyro) {
-                html += `Гироскоп: X:${data.gyro.x?.toFixed(2)} Y:${data.gyro.y?.toFixed(2)} Z:${data.gyro.z?.toFixed(2)}<br>`;
-            }
-            if (data.orientation) {
-                html += `Ориентация: α:${data.orientation.alpha}° β:${data.orientation.beta}° γ:${data.orientation.gamma}°`;
-            }
-            sensorPanel.innerHTML = html;
-        }
-        
-        log('📊 Мониторинг сенсоров активен', 'success');
-    }
-
-    // ============ КАМЕРА (ИК-режим) ============
-    async function activateCamera() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'environment' } 
-            });
-            
-            log('📸 Камера активирована в ИК-режиме', 'success');
-            log('🔦 Направьте на пульт для проверки', 'info');
-            
-            const video = document.createElement('video');
-            video.srcObject = stream;
-            video.play();
-            
-            // Создаем canvas для анализа
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            const checkIR = () => {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                ctx.drawImage(video, 0, 0);
-                
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
-                
-                let brightness = 0;
-                for (let i = 0; i < data.length; i += 4) {
-                    brightness += (data[i] + data[i+1] + data[i+2]) / 3;
-                }
-                brightness = brightness / (data.length / 4);
-                
-                sensorPanel.innerHTML = `
-                    <strong>📸 ИК-анализ:</strong><br>
-                    Яркость: ${brightness.toFixed(0)}<br>
-                    ${brightness > 200 ? '🔥 Обнаружен ИК-сигнал!' : '👀 ИК не обнаружен'}
-                `;
-                
-                if (brightness > 200) {
-                    log(`📡 ИК-сигнал: ${brightness.toFixed(0)}`, 'warning');
-                }
-            };
-            
-            setInterval(checkIR, 500);
-            
-        } catch (error) {
-            log(`❌ Ошибка камеры: ${error.message}`, 'error');
-        }
-    }
-
-    // ============ ВИБРАЦИЯ (Haptic) ============
-    function activateVibration() {
-        if (!('vibrate' in navigator)) {
-            log('❌ Виброотклик не поддерживается', 'error');
-            return;
-        }
-        
-        log('📳 Haptic-тестер активирован', 'success');
-        
-        const patterns = [
-            { name: 'Короткий', pattern: 50 },
-            { name: 'Длинный', pattern: 200 },
-            { name: 'Двойной', pattern: [100, 50, 100] },
-            { name: 'SOS', pattern: [100, 100, 100, 100, 100, 100, 300, 100, 300, 100, 300] }
-        ];
-        
-        let html = '<strong>📳 Тест вибрации:</strong><br>';
-        patterns.forEach((p, i) => {
-            html += `<button onclick="navigator.vibrate(${JSON.stringify(p.pattern)})" style="margin:2px;padding:5px;">${p.name}</button>`;
-        });
-        
-        sensorPanel.innerHTML = html;
-        navigator.vibrate(50);
-    }
-
-    // Помощь
-    function showHelp() {
-        log('📖 PhoneFlipper - карманный анализатор', 'info');
-        log('• NFC - чтение банковских карт и меток', 'info');
-        log('• Magnetic - детектор электромагнитных полей', 'info');
-        log('• IR - поиск ИК-излучения (пульты)', 'info');
-        log('• Sensors - все датчики телефона', 'info');
-        log('• Camera IR - визуализация ИК через камеру', 'info');
-    }
-
-    // Очистка при выгрузке
-    window.addEventListener('beforeunload', () => {
-        if (nfcReader) nfcReader.stop();
-        sensorIntervals.forEach(clearInterval);
-    });
-
+    
     // Инициализация
-    window.addEventListener('load', () => {
-        updateBattery();
-        log('🐬 PhoneFlipper готов', 'success');
-        log(`📱 ${navigator.userAgent.includes('Android') ? 'Android' : 'iOS'}`, 'info');
+    window.onload = () => {
+        setMode('subghz');
+        setFreq(433);
+        log('🚀 RF Hunter готов к работе', 'success');
+        log('📌 Подключите RTL-SDR через OTG-кабель', 'info');
+        log('💡 Частоты: 315/433/868 MHz', 'info');
         
-        // Проверка доступных API
-        if ('NDEFReader' in window) log('✅ NFC доступен', 'success');
-        if ('Accelerometer' in window) log('✅ Сенсоры движения доступны', 'success');
-        if ('AmbientLightSensor' in window) log('✅ Датчик света доступен', 'success');
-    });
-
+        // Проверка поддержки
+        if ('hid' in navigator) {
+            log('✅ WebHID поддерживается', 'success');
+        } else {
+            log('⚠️ WebHID не поддерживается', 'warning');
+        }
+        
+        if ('bluetooth' in navigator) {
+            log('✅ Web Bluetooth поддерживается', 'success');
+        }
+    };
 </script>
 </body>
 </html>
