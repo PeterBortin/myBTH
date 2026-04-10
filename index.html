@@ -3,13 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JS Flipper Clone</title>
+    <title>BLE Device Manager</title>
     <style>
         :root {
             --orange: #ff8c00;
             --black: #1a1a1a;
             --green: #00ff00;
             --red: #ff4444;
+            --blue: #00ccff;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
@@ -21,186 +26,507 @@
             align-items: center;
             padding: 20px;
             margin: 0;
+            min-height: 100vh;
             user-select: none;
         }
 
-        #screen {
-            width: 340px;
-            height: 220px;
-            border: 4px solid var(--orange);
-            background-color: #222;
-            padding: 10px;
-            overflow-y: auto;
-            margin-bottom: 20px;
-            box-shadow: 0 0 15px rgba(255, 140, 0, 0.3);
-            font-size: 12px;
-            border-radius: 10px;
-            box-sizing: border-box;
+        h2 {
+            text-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
+            margin-bottom: 10px;
         }
 
-        .log-entry { margin-bottom: 5px; border-bottom: 1px solid #333; line-height: 1.4; }
+        #screen {
+            width: 100%;
+            max-width: 380px;
+            height: 240px;
+            border: 3px solid var(--orange);
+            background-color: #0a0a0a;
+            padding: 12px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 15px rgba(255, 140, 0, 0.3);
+            font-size: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .log-entry { 
+            margin-bottom: 4px; 
+            border-bottom: 1px solid #222; 
+            line-height: 1.5;
+            word-break: break-word;
+        }
+        
         .success { color: var(--green); }
         .error { color: var(--red); }
-        .info { color: #00ccff; }
+        .info { color: var(--blue); }
+        .warning { color: #ffaa00; }
+
+        .status-bar {
+            width: 100%;
+            max-width: 380px;
+            font-size: 11px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 10px;
+            background: #111;
+            border-radius: 5px;
+            border: 1px solid #333;
+        }
 
         .controls {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
-            width: 340px;
+            width: 100%;
+            max-width: 380px;
         }
 
         button {
             background: var(--orange);
             color: black;
             border: none;
-            padding: 15px;
+            padding: 12px 8px;
             font-weight: bold;
             cursor: pointer;
-            border-radius: 5px;
+            border-radius: 6px;
             text-transform: uppercase;
             font-family: inherit;
+            font-size: 12px;
+            transition: all 0.1s ease;
+            box-shadow: 0 2px 0 #b35f00;
         }
 
-        button:active {
-            transform: scale(0.95);
-            background: #e67e00;
+        button:hover:not(:disabled) {
+            background: #ffa333;
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: none;
         }
 
         button:disabled {
-            background: #555;
+            background: #444;
+            box-shadow: none;
+            color: #888;
             cursor: not-allowed;
         }
 
-        .status-bar {
-            width: 340px;
-            font-size: 10px;
-            margin-bottom: 5px;
-            display: flex;
-            justify-content: space-between;
+        .full-width {
+            grid-column: span 2;
+            margin-top: 5px;
+        }
+
+        #device-list {
+            width: 100%;
+            max-width: 380px;
+            margin: 10px 0;
+            max-height: 150px;
+            overflow-y: auto;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .device-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid #222;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.1s;
+        }
+
+        .device-item:hover {
+            background: #1a3a1a;
+            color: var(--green);
+        }
+
+        .device-item.selected {
+            background: #2a4a2a;
+            color: var(--green);
+        }
+
+        #connection-status {
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #222;
         }
     </style>
 </head>
 <body>
 
-    <h2>FLIPPER JS-EDITION</h2>
+    <h2>🔷 BLE DEVICE MANAGER</h2>
 
     <div class="status-bar">
-        <span id="api-status">API: CHECKING...</span>
-        <span id="bt-status">DISCONNECTED</span>
+        <span id="api-status">⚡ API: Проверка...</span>
+        <span id="connection-status">🔴 Отключено</span>
     </div>
 
     <div id="screen">
-        <div class="log-entry info">System initializing...</div>
+        <div class="log-entry info">> Система инициализируется...</div>
+        <div class="log-entry info">> Готов к сканированию BLE устройств</div>
     </div>
 
+    <div id="device-list"></div>
+
     <div class="controls">
-        <button id="scanBtn" onclick="scanDevices()">Scan BLE</button>
-        <button onclick="readBattery()">Read Bat</button>
-        <button onclick="getDeviceInfo()">Device Info</button>
-        <button onclick="clearLogs()" style="background: #444; color: white;">Clear</button>
+        <button id="scanBtn">🔍 Сканировать</button>
+        <button id="connectBtn" disabled>🔗 Подключить</button>
+        <button id="batteryBtn" disabled>🔋 Батарея</button>
+        <button id="infoBtn" disabled>ℹ️ Инфо</button>
+        <button id="disconnectBtn" disabled class="full-width">❌ Отключить</button>
+        <button id="clearBtn" class="full-width" style="background: #333; color: #fff;">🗑️ Очистить лог</button>
     </div>
 
     <script>
+        // DOM элементы
         const screen = document.getElementById('screen');
-        const btStatus = document.getElementById('bt-status');
         const apiStatus = document.getElementById('api-status');
-        let connectedDevice = null;
+        const connectionStatus = document.getElementById('connection-status');
+        const deviceListEl = document.getElementById('device-list');
+        
+        // Кнопки
+        const scanBtn = document.getElementById('scanBtn');
+        const connectBtn = document.getElementById('connectBtn');
+        const batteryBtn = document.getElementById('batteryBtn');
+        const infoBtn = document.getElementById('infoBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const clearBtn = document.getElementById('clearBtn');
 
-        function log(text, type = '') {
+        // Состояние приложения
+        let bluetoothDevice = null;
+        let gattServer = null;
+        let connectedService = null;
+        let discoveredDevices = new Map(); // Храним найденные устройства
+
+        // Функция логирования
+        function log(message, type = '') {
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
-            entry.innerText = `> ${text}`;
+            const time = new Date().toLocaleTimeString().slice(0,5);
+            entry.innerText = `[${time}] ${message}`;
             screen.appendChild(entry);
             screen.scrollTop = screen.scrollHeight;
+            
+            // Ограничиваем количество записей
+            if (screen.children.length > 30) {
+                screen.removeChild(screen.firstChild);
+            }
         }
 
-        // 1. Проверка поддержки при старте
-        window.onload = () => {
+        // Проверка поддержки Web Bluetooth
+        function checkBluetoothSupport() {
             if (!navigator.bluetooth) {
-                apiStatus.innerText = 'API: NOT SUPPORTED';
-                apiStatus.classList.add('error');
-                log('CRITICAL: Web Bluetooth API not found!', 'error');
-                log('Use Chrome on Android/PC or Bluefy on iOS.', 'info');
-                document.getElementById('scanBtn').disabled = true;
+                apiStatus.innerHTML = '❌ API: Не поддерживается';
+                apiStatus.style.color = 'var(--red)';
+                log('❌ КРИТИЧЕСКАЯ ОШИБКА: Web Bluetooth API не найден!', 'error');
+                log('💡 Используйте Chrome/Edge на Android/PC или Bluefy на iOS', 'warning');
+                scanBtn.disabled = true;
+                return false;
             } else {
-                apiStatus.innerText = 'API: OK (HTTPS)';
-                apiStatus.classList.add('success');
-                log('System ready. Press SCAN to find objects.');
+                apiStatus.innerHTML = '✅ API: Поддерживается';
+                apiStatus.style.color = 'var(--green)';
+                return true;
             }
-        };
+        }
 
-        // 2. Поиск устройств
+        // Сканирование устройств
         async function scanDevices() {
-            log('Requesting Bluetooth devices...', 'info');
+            log('🔍 Запуск сканирования BLE устройств...', 'info');
+            deviceListEl.style.display = 'block';
+            deviceListEl.innerHTML = '<div class="device-item" style="cursor: default; color: #888;">⏳ Поиск устройств...</div>';
+            discoveredDevices.clear();
+            
             try {
-                // Пытаемся найти устройства. 
-                // acceptAllDevices требует указания всех сервисов, к которым хотим доступ, в optionalServices
-                connectedDevice = await navigator.bluetooth.requestDevice({
+                // Запрашиваем устройство
+                const device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true,
-                    optionalServices: ['battery_service', 'device_information']
+                    optionalServices: [
+                        'battery_service',
+                        'device_information',
+                        'generic_access',
+                        'generic_attribute'
+                    ]
                 });
 
-                log(`Paired: ${connectedDevice.name || 'Unnamed Device'}`, 'success');
-                btStatus.innerText = 'PAIRED';
+                // Сохраняем найденное устройство
+                discoveredDevices.set(device.id, device);
                 
-                connectedDevice.addEventListener('gattserverdisconnected', () => {
-                    log('Device lost connection', 'error');
-                    btStatus.innerText = 'DISCONNECTED';
-                    connectedDevice = null;
-                });
-
+                // Отображаем в списке
+                displayDeviceList();
+                
+                log(`✅ Найдено устройство: ${device.name || 'Безымянное'}`, 'success');
+                log(`📱 ID: ${device.id.slice(0, 8)}...`, 'info');
+                
+                // Автоматически выбираем устройство
+                selectDevice(device.id);
+                
             } catch (error) {
-                log('Error: ' + error.message, 'error');
-                console.error(error);
+                if (error.message.includes('User cancelled')) {
+                    log('❌ Сканирование отменено пользователем', 'warning');
+                } else {
+                    log(`❌ Ошибка сканирования: ${error.message}`, 'error');
+                }
+                deviceListEl.style.display = 'none';
             }
         }
 
-        // 3. Чтение батареи
-        async function readBattery() {
-            if (!connectedDevice) return log('Error: No device paired!', 'error');
+        // Отображение списка устройств
+        function displayDeviceList() {
+            deviceListEl.innerHTML = '';
+            
+            if (discoveredDevices.size === 0) {
+                deviceListEl.innerHTML = '<div class="device-item" style="cursor: default; color: #888;">Устройства не найдены</div>';
+                return;
+            }
+            
+            discoveredDevices.forEach((device, id) => {
+                const item = document.createElement('div');
+                item.className = 'device-item';
+                item.dataset.deviceId = id;
+                item.innerHTML = `
+                    <strong>${device.name || 'Unknown Device'}</strong><br>
+                    <small style="color: #888;">ID: ${id.slice(0, 12)}... | RSSI: N/A</small>
+                `;
+                item.onclick = () => selectDevice(id);
+                deviceListEl.appendChild(item);
+            });
+        }
 
-            try {
-                log('Connecting to GATT server...');
-                const server = await connectedDevice.gatt.connect();
-                btStatus.innerText = 'CONNECTED';
+        // Выбор устройства
+        function selectDevice(deviceId) {
+            // Убираем выделение со всех
+            document.querySelectorAll('.device-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Выделяем выбранное
+            const selectedEl = document.querySelector(`[data-device-id="${deviceId}"]`);
+            if (selectedEl) {
+                selectedEl.classList.add('selected');
+            }
+            
+            bluetoothDevice = discoveredDevices.get(deviceId);
+            
+            if (bluetoothDevice) {
+                connectBtn.disabled = false;
+                log(`📌 Выбрано: ${bluetoothDevice.name || 'устройство'}`, 'success');
                 
-                log('Accessing Battery Service...');
-                const service = await server.getPrimaryService('battery_service');
-                const char = await service.getCharacteristic('battery_level');
-                
-                log('Reading value...');
-                const value = await char.readValue();
-                log(`BATTERY LEVEL: ${value.getUint8(0)}%`, 'success');
-            } catch (error) {
-                log('GATT Error: ' + error.message, 'error');
+                // Добавляем слушатель отключения
+                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
             }
         }
 
-        // 4. Информация о железе
-        async function getDeviceInfo() {
-            if (!connectedDevice) return log('Error: No device paired!', 'error');
-
+        // Подключение к устройству
+        async function connectToDevice() {
+            if (!bluetoothDevice) {
+                log('❌ Устройство не выбрано!', 'error');
+                return;
+            }
+            
+            log(`🔗 Подключение к ${bluetoothDevice.name || 'устройству'}...`, 'info');
+            
             try {
-                log('Connecting to GATT...');
-                const server = await connectedDevice.gatt.connect();
-                const service = await server.getPrimaryService('device_information');
+                gattServer = await bluetoothDevice.gatt.connect();
                 
-                // UUID для названия производителя: 0x2A29
-                const char = await service.getCharacteristic('manufacturer_name_string');
-                const value = await char.readValue();
+                connectionStatus.innerHTML = '🟢 Подключено';
+                connectionStatus.style.color = 'var(--green)';
+                
+                log('✅ GATT сервер подключен', 'success');
+                
+                // Активируем кнопки
+                batteryBtn.disabled = false;
+                infoBtn.disabled = false;
+                disconnectBtn.disabled = false;
+                connectBtn.disabled = true;
+                
+                // Проверяем доступные сервисы
+                await checkAvailableServices();
+                
+            } catch (error) {
+                log(`❌ Ошибка подключения: ${error.message}`, 'error');
+                connectionStatus.innerHTML = '🔴 Ошибка';
+            }
+        }
+
+        // Проверка доступных сервисов
+        async function checkAvailableServices() {
+            try {
+                const services = await gattServer.getPrimaryServices();
+                log(`📡 Доступно сервисов: ${services.length}`, 'info');
+                
+                services.forEach(service => {
+                    log(`  • ${service.uuid}`, 'info');
+                });
+            } catch (error) {
+                log(`⚠️ Не удалось получить список сервисов`, 'warning');
+            }
+        }
+
+        // Чтение уровня батареи
+        async function readBatteryLevel() {
+            if (!gattServer || !bluetoothDevice || !bluetoothDevice.gatt.connected) {
+                log('❌ Устройство не подключено!', 'error');
+                return;
+            }
+            
+            log('🔋 Запрос уровня заряда батареи...', 'info');
+            
+            try {
+                const service = await gattServer.getPrimaryService('battery_service');
+                const characteristic = await service.getCharacteristic('battery_level');
+                const value = await characteristic.readValue();
+                const batteryLevel = value.getUint8(0);
+                
+                log(`✅ Уровень заряда: ${batteryLevel}%`, 'success');
+                
+                // Визуальное отображение
+                const barLength = Math.floor(batteryLevel / 10);
+                const batteryBar = '█'.repeat(barLength) + '░'.repeat(10 - barLength);
+                log(`📊 [${batteryBar}]`, batteryLevel > 20 ? 'success' : 'warning');
+                
+            } catch (error) {
+                if (error.message.includes('No Services matching')) {
+                    log('❌ Сервис батареи не найден на устройстве', 'error');
+                } else {
+                    log(`❌ Ошибка чтения батареи: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Чтение информации об устройстве
+        async function readDeviceInfo() {
+            if (!gattServer || !bluetoothDevice || !bluetoothDevice.gatt.connected) {
+                log('❌ Устройство не подключено!', 'error');
+                return;
+            }
+            
+            log('ℹ️ Запрос информации об устройстве...', 'info');
+            
+            try {
+                const service = await gattServer.getPrimaryService('device_information');
+                const characteristics = await service.getCharacteristics();
+                
+                log(`📋 Найдено характеристик: ${characteristics.length}`, 'success');
+                
                 const decoder = new TextDecoder('utf-8');
                 
-                log(`MANUFACTURER: ${decoder.decode(value)}`, 'success');
+                // Читаем все доступные характеристики
+                for (const char of characteristics) {
+                    try {
+                        const value = await char.readValue();
+                        let displayValue = '';
+                        
+                        // Определяем тип характеристики по UUID
+                        const uuid = char.uuid;
+                        
+                        if (uuid.includes('2a29')) { // Manufacturer Name
+                            displayValue = `Производитель: ${decoder.decode(value)}`;
+                        } else if (uuid.includes('2a24')) { // Model Number
+                            displayValue = `Модель: ${decoder.decode(value)}`;
+                        } else if (uuid.includes('2a25')) { // Serial Number
+                            displayValue = `Серийный номер: ${decoder.decode(value)}`;
+                        } else if (uuid.includes('2a26')) { // Firmware Revision
+                            displayValue = `Прошивка: ${decoder.decode(value)}`;
+                        } else if (uuid.includes('2a27')) { // Hardware Revision
+                            displayValue = `Версия железа: ${decoder.decode(value)}`;
+                        } else if (uuid.includes('2a28')) { // Software Revision
+                            displayValue = `Версия ПО: ${decoder.decode(value)}`;
+                        } else if (uuid.includes('2a23')) { // System ID
+                            const bytes = new Uint8Array(value.buffer);
+                            displayValue = `System ID: ${Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(':')}`;
+                        } else {
+                            const bytes = new Uint8Array(value.buffer);
+                            displayValue = `${uuid}: ${Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ')}`;
+                        }
+                        
+                        if (displayValue) {
+                            log(`  ${displayValue}`, 'info');
+                        }
+                        
+                    } catch (charError) {
+                        // Пропускаем характеристики, которые не можем прочитать
+                        console.log('Cannot read characteristic:', char.uuid, charError);
+                    }
+                }
+                
+                // Также читаем имя устройства из Generic Access
+                try {
+                    const genericAccess = await gattServer.getPrimaryService('generic_access');
+                    const deviceNameChar = await genericAccess.getCharacteristic('device_name');
+                    const nameValue = await deviceNameChar.readValue();
+                    const decoder = new TextDecoder('utf-8');
+                    log(`  Имя устройства: ${decoder.decode(nameValue)}`, 'success');
+                } catch (e) {
+                    // Игнорируем, если сервис недоступен
+                }
+                
             } catch (error) {
-                log('Info Error: ' + error.message, 'error');
-                log('Service not available on this device.', 'info');
+                if (error.message.includes('No Services matching')) {
+                    log('❌ Device Information Service не найден', 'error');
+                    log('💡 Это устройство не предоставляет информацию о себе', 'warning');
+                } else {
+                    log(`❌ Ошибка: ${error.message}`, 'error');
+                }
             }
         }
 
-        function clearLogs() {
-            screen.innerHTML = '<div class="log-entry">Terminal reset.</div>';
+        // Отключение от устройства
+        function disconnectDevice() {
+            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                bluetoothDevice.gatt.disconnect();
+                log('🔌 Устройство отключено', 'warning');
+            }
+            onDisconnected();
         }
+
+        // Обработчик отключения
+        function onDisconnected() {
+            connectionStatus.innerHTML = '🔴 Отключено';
+            connectionStatus.style.color = 'var(--red)';
+            
+            gattServer = null;
+            connectedService = null;
+            
+            // Деактивируем кнопки
+            batteryBtn.disabled = true;
+            infoBtn.disabled = true;
+            disconnectBtn.disabled = true;
+            connectBtn.disabled = false;
+            
+            log('📴 Соединение с устройством разорвано', 'warning');
+        }
+
+        // Очистка лога
+        function clearLog() {
+            screen.innerHTML = '<div class="log-entry info">> Лог очищен</div>';
+            log('🧹 Терминал очищен', 'info');
+        }
+
+        // Обработчики событий
+        scanBtn.addEventListener('click', scanDevices);
+        connectBtn.addEventListener('click', connectToDevice);
+        batteryBtn.addEventListener('click', readBatteryLevel);
+        infoBtn.addEventListener('click', readDeviceInfo);
+        disconnectBtn.addEventListener('click', disconnectDevice);
+        clearBtn.addEventListener('click', clearLog);
+
+        // Инициализация
+        window.addEventListener('load', () => {
+            checkBluetoothSupport();
+            log('🚀 BLE Device Manager запущен', 'success');
+            log('📱 Нажмите "Сканировать" для поиска устройств', 'info');
+        });
+
+        // Обработка потери соединения
+        window.addEventListener('beforeunload', () => {
+            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                bluetoothDevice.gatt.disconnect();
+            }
+        });
     </script>
 </body>
 </html>
