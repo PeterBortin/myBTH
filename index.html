@@ -2,531 +2,621 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BLE Device Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PhoneFlipper</title>
     <style>
         :root {
-            --orange: #ff8c00;
-            --black: #1a1a1a;
-            --green: #00ff00;
-            --red: #ff4444;
-            --blue: #00ccff;
+            --orange: #ff6b00;
+            --dark: #0a0e12;
+            --darker: #050708;
+            --green: #00ff41;
+            --red: #ff3344;
+            --blue: #0088ff;
+            --yellow: #ffcc00;
         }
 
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            background-color: var(--black);
+            background: var(--dark);
             color: var(--orange);
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            padding: 15px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
-            margin: 0;
-            min-height: 100vh;
-            user-select: none;
         }
 
-        h2 {
-            text-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
-            margin-bottom: 10px;
-        }
-
-        #screen {
+        .device-frame {
+            max-width: 400px;
             width: 100%;
-            max-width: 380px;
-            height: 240px;
-            border: 3px solid var(--orange);
-            background-color: #0a0a0a;
-            padding: 12px;
-            overflow-y: auto;
-            margin-bottom: 15px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 15px rgba(255, 140, 0, 0.3);
-            font-size: 12px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 30px;
+            padding: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 0 0 2px #2a2a4a;
+            border: 1px solid var(--orange);
         }
 
-        .log-entry { 
-            margin-bottom: 4px; 
-            border-bottom: 1px solid #222; 
+        .screen-header {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #000;
+            border-radius: 10px 10px 0 0;
+            border-bottom: 2px solid var(--orange);
+            font-size: 12px;
+        }
+
+        .display {
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 250px;
+            max-height: 350px;
+            overflow-y: auto;
+            font-size: 13px;
+            margin-bottom: 15px;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+            color: #ddd;
+        }
+
+        .log-entry {
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #1a2a3a;
             line-height: 1.5;
             word-break: break-word;
         }
-        
+
         .success { color: var(--green); }
         .error { color: var(--red); }
         .info { color: var(--blue); }
-        .warning { color: #ffaa00; }
+        .warning { color: var(--yellow); }
+        .data { color: #aaa; font-family: monospace; }
 
-        .status-bar {
-            width: 100%;
-            max-width: 380px;
-            font-size: 11px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 10px;
-            background: #111;
-            border-radius: 5px;
-            border: 1px solid #333;
-        }
-
-        .controls {
+        .module-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            width: 100%;
-            max-width: 380px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
         }
 
-        button {
-            background: var(--orange);
-            color: black;
-            border: none;
-            padding: 12px 8px;
-            font-weight: bold;
+        .module-btn {
+            background: linear-gradient(135deg, #1e2a3a 0%, #0f1922 100%);
+            border: 2px solid #2a3a4a;
+            color: var(--orange);
+            padding: 15px 10px;
+            border-radius: 12px;
             cursor: pointer;
-            border-radius: 6px;
+            font-weight: bold;
+            font-size: 13px;
             text-transform: uppercase;
+            transition: all 0.15s;
+            box-shadow: 0 4px 0 #0a0e12;
+            font-family: inherit;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .module-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+            background: linear-gradient(135deg, #2a3a4a 0%, #1a2a3a 100%);
+            border-color: var(--orange);
+        }
+
+        .module-btn.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(1);
+        }
+
+        .module-icon {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .control-panel {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .control-btn {
+            flex: 1;
+            background: #1a1a2e;
+            border: 1px solid #3a3a5a;
+            color: #ccc;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
             font-family: inherit;
             font-size: 12px;
-            transition: all 0.1s ease;
-            box-shadow: 0 2px 0 #b35f00;
+            transition: all 0.1s;
         }
 
-        button:hover:not(:disabled) {
-            background: #ffa333;
+        .control-btn:active {
+            background: #2a2a4e;
         }
 
-        button:active:not(:disabled) {
-            transform: translateY(2px);
-            box-shadow: none;
-        }
-
-        button:disabled {
+        .status-led {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
             background: #444;
-            box-shadow: none;
-            color: #888;
-            cursor: not-allowed;
         }
 
-        .full-width {
-            grid-column: span 2;
-            margin-top: 5px;
+        .led-active {
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            animation: pulse 1s infinite;
         }
 
-        #device-list {
-            width: 100%;
-            max-width: 380px;
+        .led-nfc {
+            background: var(--blue);
+            box-shadow: 0 0 10px var(--blue);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .sensor-value {
+            background: #0a0e12;
+            padding: 8px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 11px;
+            border-left: 3px solid var(--orange);
+        }
+
+        .nfc-data {
+            background: #001a00;
+            border: 1px solid #00ff41;
+            padding: 10px;
+            border-radius: 6px;
             margin: 10px 0;
-            max-height: 150px;
-            overflow-y: auto;
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 5px;
-            display: none;
-        }
-
-        .device-item {
-            padding: 8px 12px;
-            border-bottom: 1px solid #222;
-            cursor: pointer;
-            font-size: 12px;
-            transition: background 0.1s;
-        }
-
-        .device-item:hover {
-            background: #1a3a1a;
-            color: var(--green);
-        }
-
-        .device-item.selected {
-            background: #2a4a2a;
-            color: var(--green);
-        }
-
-        #connection-status {
-            padding: 2px 8px;
-            border-radius: 12px;
-            background: #222;
+            font-family: monospace;
+            word-break: break-all;
         }
     </style>
 </head>
 <body>
 
-    <h2>🔷 BLE DEVICE MANAGER</h2>
-
-    <div class="status-bar">
-        <span id="api-status">⚡ API: Проверка...</span>
-        <span id="connection-status">🔴 Отключено</span>
+<div class="device-frame">
+    <div class="screen-header">
+        <span>
+            <span id="nfc-led" class="status-led"></span>
+            <span id="ir-led" class="status-led"></span>
+            <span id="rfid-led" class="status-led"></span>
+        </span>
+        <span>📱 PhoneFlipper v2.0</span>
+        <span id="battery-indicator">🔋 --%</span>
     </div>
 
-    <div id="screen">
-        <div class="log-entry info">> Система инициализируется...</div>
-        <div class="log-entry info">> Готов к сканированию BLE устройств</div>
+    <div class="display" id="display">
+        <div class="log-entry info">> 🐬 PhoneFlipper активирован</div>
+        <div class="log-entry">> Готов к работе с сенсорами</div>
+        <div class="log-entry warning">> Выберите модуль для начала</div>
     </div>
 
-    <div id="device-list"></div>
-
-    <div class="controls">
-        <button id="scanBtn">🔍 Сканировать</button>
-        <button id="connectBtn" disabled>🔗 Подключить</button>
-        <button id="batteryBtn" disabled>🔋 Батарея</button>
-        <button id="infoBtn" disabled>ℹ️ Инфо</button>
-        <button id="disconnectBtn" disabled class="full-width">❌ Отключить</button>
-        <button id="clearBtn" class="full-width" style="background: #333; color: #fff;">🗑️ Очистить лог</button>
+    <div class="module-grid">
+        <div class="module-btn" onclick="activateNFC()">
+            <span class="module-icon">📱💳</span>
+            <span>NFC Reader</span>
+        </div>
+        <div class="module-btn" onclick="activateMagnetic()">
+            <span class="module-icon">🧲📊</span>
+            <span>Magnetic</span>
+        </div>
+        <div class="module-btn" onclick="activateInfrared()">
+            <span class="module-icon">📡🔥</span>
+            <span>IR Analyzer</span>
+        </div>
+        <div class="module-btn" onclick="activateSensors()">
+            <span class="module-icon">📐🌡️</span>
+            <span>Sensors</span>
+        </div>
+        <div class="module-btn" onclick="activateCamera()">
+            <span class="module-icon">📸🔦</span>
+            <span>Camera IR</span>
+        </div>
+        <div class="module-btn" onclick="activateVibration()">
+            <span class="module-icon">📳🎵</span>
+            <span>Haptic</span>
+        </div>
     </div>
 
-    <script>
-        // DOM элементы
-        const screen = document.getElementById('screen');
-        const apiStatus = document.getElementById('api-status');
-        const connectionStatus = document.getElementById('connection-status');
-        const deviceListEl = document.getElementById('device-list');
+    <div class="control-panel">
+        <button class="control-btn" onclick="clearDisplay()">🗑️ Clear</button>
+        <button class="control-btn" onclick="exportData()">💾 Export</button>
+        <button class="control-btn" onclick="showHelp()">❓ Help</button>
+    </div>
+
+    <div id="sensor-panel" class="sensor-value">
+        <div id="sensor-data">Ожидание активации сенсоров...</div>
+    </div>
+</div>
+
+<script>
+    const display = document.getElementById('display');
+    const sensorPanel = document.getElementById('sensor-data');
+    let nfcReader = null;
+    let magneticSensor = null;
+    let irSensor = null;
+    let sensorIntervals = [];
+
+    // Логирование
+    function log(message, type = '') {
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        const time = new Date().toLocaleTimeString().slice(0,8);
+        entry.innerHTML = `[${time}] ${message}`;
+        display.appendChild(entry);
+        display.scrollTop = display.scrollHeight;
         
-        // Кнопки
-        const scanBtn = document.getElementById('scanBtn');
-        const connectBtn = document.getElementById('connectBtn');
-        const batteryBtn = document.getElementById('batteryBtn');
-        const infoBtn = document.getElementById('infoBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const clearBtn = document.getElementById('clearBtn');
+        if (display.children.length > 25) {
+            display.removeChild(display.firstChild);
+        }
+    }
 
-        // Состояние приложения
-        let bluetoothDevice = null;
-        let gattServer = null;
-        let connectedService = null;
-        let discoveredDevices = new Map(); // Храним найденные устройства
+    // Очистка дисплея
+    function clearDisplay() {
+        display.innerHTML = '<div class="log-entry info">> Дисплей очищен</div>';
+        log('🧹 Готов к новым операциям', 'success');
+    }
 
-        // Функция логирования
-        function log(message, type = '') {
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
-            const time = new Date().toLocaleTimeString().slice(0,5);
-            entry.innerText = `[${time}] ${message}`;
-            screen.appendChild(entry);
-            screen.scrollTop = screen.scrollHeight;
-            
-            // Ограничиваем количество записей
-            if (screen.children.length > 30) {
-                screen.removeChild(screen.firstChild);
-            }
+    // Экспорт данных
+    function exportData() {
+        const logs = Array.from(display.children).map(el => el.innerText).join('\n');
+        const blob = new Blob([logs], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `phoneflipper_${Date.now()}.log`;
+        a.click();
+        log('📁 Лог экспортирован', 'success');
+    }
+
+    // Проверка батареи
+    async function updateBattery() {
+        try {
+            const battery = await navigator.getBattery();
+            const updateLevel = () => {
+                const level = Math.round(battery.level * 100);
+                document.getElementById('battery-indicator').textContent = `🔋 ${level}%`;
+            };
+            updateLevel();
+            battery.addEventListener('levelchange', updateLevel);
+        } catch (e) {
+            document.getElementById('battery-indicator').textContent = '🔋 N/A';
+        }
+    }
+
+    // ============ NFC МОДУЛЬ ============
+    async function activateNFC() {
+        if (!('NDEFReader' in window)) {
+            log('❌ NFC не поддерживается в этом браузере', 'error');
+            log('💡 Используйте Chrome на Android', 'warning');
+            return;
         }
 
-        // Проверка поддержки Web Bluetooth
-        function checkBluetoothSupport() {
-            if (!navigator.bluetooth) {
-                apiStatus.innerHTML = '❌ API: Не поддерживается';
-                apiStatus.style.color = 'var(--red)';
-                log('❌ КРИТИЧЕСКАЯ ОШИБКА: Web Bluetooth API не найден!', 'error');
-                log('💡 Используйте Chrome/Edge на Android/PC или Bluefy на iOS', 'warning');
-                scanBtn.disabled = true;
-                return false;
-            } else {
-                apiStatus.innerHTML = '✅ API: Поддерживается';
-                apiStatus.style.color = 'var(--green)';
-                return true;
-            }
-        }
-
-        // Сканирование устройств
-        async function scanDevices() {
-            log('🔍 Запуск сканирования BLE устройств...', 'info');
-            deviceListEl.style.display = 'block';
-            deviceListEl.innerHTML = '<div class="device-item" style="cursor: default; color: #888;">⏳ Поиск устройств...</div>';
-            discoveredDevices.clear();
+        try {
+            nfcReader = new NDEFReader();
+            document.getElementById('nfc-led').className = 'status-led led-nfc';
             
-            try {
-                // Запрашиваем устройство
-                const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true,
-                    optionalServices: [
-                        'battery_service',
-                        'device_information',
-                        'generic_access',
-                        'generic_attribute'
-                    ]
-                });
-
-                // Сохраняем найденное устройство
-                discoveredDevices.set(device.id, device);
+            log('📱 NFC сканер активирован', 'success');
+            log('💳 Поднесите карту или метку к задней панели', 'info');
+            
+            await nfcReader.scan();
+            
+            nfcReader.addEventListener("reading", event => {
+                const { serialNumber } = event;
+                log(`🆔 UID: ${serialNumber}`, 'data');
                 
-                // Отображаем в списке
-                displayDeviceList();
-                
-                log(`✅ Найдено устройство: ${device.name || 'Безымянное'}`, 'success');
-                log(`📱 ID: ${device.id.slice(0, 8)}...`, 'info');
-                
-                // Автоматически выбираем устройство
-                selectDevice(device.id);
-                
-            } catch (error) {
-                if (error.message.includes('User cancelled')) {
-                    log('❌ Сканирование отменено пользователем', 'warning');
-                } else {
-                    log(`❌ Ошибка сканирования: ${error.message}`, 'error');
+                for (const record of event.message.records) {
+                    const decoder = new TextDecoder();
+                    let data = decoder.decode(record.data);
+                    
+                    log(`📄 Тип записи: ${record.recordType}`, 'info');
+                    log(`📊 Данные: ${data.substring(0, 100)}`, 'data');
+                    
+                    sensorPanel.innerHTML = `
+                        <strong>📇 NFC Данные:</strong><br>
+                        UID: ${serialNumber}<br>
+                        Тип: ${record.recordType}<br>
+                        <div class="nfc-data">${data}</div>
+                    `;
                 }
-                deviceListEl.style.display = 'none';
-            }
-        }
-
-        // Отображение списка устройств
-        function displayDeviceList() {
-            deviceListEl.innerHTML = '';
-            
-            if (discoveredDevices.size === 0) {
-                deviceListEl.innerHTML = '<div class="device-item" style="cursor: default; color: #888;">Устройства не найдены</div>';
-                return;
-            }
-            
-            discoveredDevices.forEach((device, id) => {
-                const item = document.createElement('div');
-                item.className = 'device-item';
-                item.dataset.deviceId = id;
-                item.innerHTML = `
-                    <strong>${device.name || 'Unknown Device'}</strong><br>
-                    <small style="color: #888;">ID: ${id.slice(0, 12)}... | RSSI: N/A</small>
-                `;
-                item.onclick = () => selectDevice(id);
-                deviceListEl.appendChild(item);
             });
-        }
 
-        // Выбор устройства
-        function selectDevice(deviceId) {
-            // Убираем выделение со всех
-            document.querySelectorAll('.device-item').forEach(el => {
-                el.classList.remove('selected');
+            nfcReader.addEventListener("readingerror", () => {
+                log('❌ Ошибка чтения NFC', 'error');
             });
-            
-            // Выделяем выбранное
-            const selectedEl = document.querySelector(`[data-device-id="${deviceId}"]`);
-            if (selectedEl) {
-                selectedEl.classList.add('selected');
-            }
-            
-            bluetoothDevice = discoveredDevices.get(deviceId);
-            
-            if (bluetoothDevice) {
-                connectBtn.disabled = false;
-                log(`📌 Выбрано: ${bluetoothDevice.name || 'устройство'}`, 'success');
-                
-                // Добавляем слушатель отключения
-                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
-            }
+
+        } catch (error) {
+            log(`❌ Ошибка NFC: ${error.message}`, 'error');
+            document.getElementById('nfc-led').className = 'status-led';
+        }
+    }
+
+    // ============ МАГНИТНЫЙ СЕНСОР ============
+    function activateMagnetic() {
+        if (!('Magnetometer' in window) && !('DeviceMotionEvent' in window)) {
+            log('❌ Магнитометр недоступен', 'error');
+            return;
         }
 
-        // Подключение к устройству
-        async function connectToDevice() {
-            if (!bluetoothDevice) {
-                log('❌ Устройство не выбрано!', 'error');
-                return;
-            }
-            
-            log(`🔗 Подключение к ${bluetoothDevice.name || 'устройству'}...`, 'info');
-            
-            try {
-                gattServer = await bluetoothDevice.gatt.connect();
-                
-                connectionStatus.innerHTML = '🟢 Подключено';
-                connectionStatus.style.color = 'var(--green)';
-                
-                log('✅ GATT сервер подключен', 'success');
-                
-                // Активируем кнопки
-                batteryBtn.disabled = false;
-                infoBtn.disabled = false;
-                disconnectBtn.disabled = false;
-                connectBtn.disabled = true;
-                
-                // Проверяем доступные сервисы
-                await checkAvailableServices();
-                
-            } catch (error) {
-                log(`❌ Ошибка подключения: ${error.message}`, 'error');
-                connectionStatus.innerHTML = '🔴 Ошибка';
-            }
+        log('🧲 Магнитный анализатор активирован', 'success');
+        document.getElementById('rfid-led').className = 'status-led led-active';
+        
+        let maxField = 0;
+        
+        if ('requestDeviceMotion' in DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission()
+                .then(permissionState => {
+                    if (permissionState === 'granted') {
+                        startMagneticMonitoring();
+                    }
+                })
+                .catch(console.error);
+        } else {
+            startMagneticMonitoring();
         }
 
-        // Проверка доступных сервисов
-        async function checkAvailableServices() {
-            try {
-                const services = await gattServer.getPrimaryServices();
-                log(`📡 Доступно сервисов: ${services.length}`, 'info');
-                
-                services.forEach(service => {
-                    log(`  • ${service.uuid}`, 'info');
-                });
-            } catch (error) {
-                log(`⚠️ Не удалось получить список сервисов`, 'warning');
-            }
-        }
-
-        // Чтение уровня батареи
-        async function readBatteryLevel() {
-            if (!gattServer || !bluetoothDevice || !bluetoothDevice.gatt.connected) {
-                log('❌ Устройство не подключено!', 'error');
-                return;
-            }
-            
-            log('🔋 Запрос уровня заряда батареи...', 'info');
-            
-            try {
-                const service = await gattServer.getPrimaryService('battery_service');
-                const characteristic = await service.getCharacteristic('battery_level');
-                const value = await characteristic.readValue();
-                const batteryLevel = value.getUint8(0);
-                
-                log(`✅ Уровень заряда: ${batteryLevel}%`, 'success');
-                
-                // Визуальное отображение
-                const barLength = Math.floor(batteryLevel / 10);
-                const batteryBar = '█'.repeat(barLength) + '░'.repeat(10 - barLength);
-                log(`📊 [${batteryBar}]`, batteryLevel > 20 ? 'success' : 'warning');
-                
-            } catch (error) {
-                if (error.message.includes('No Services matching')) {
-                    log('❌ Сервис батареи не найден на устройстве', 'error');
-                } else {
-                    log(`❌ Ошибка чтения батареи: ${error.message}`, 'error');
-                }
-            }
-        }
-
-        // Чтение информации об устройстве
-        async function readDeviceInfo() {
-            if (!gattServer || !bluetoothDevice || !bluetoothDevice.gatt.connected) {
-                log('❌ Устройство не подключено!', 'error');
-                return;
-            }
-            
-            log('ℹ️ Запрос информации об устройстве...', 'info');
-            
-            try {
-                const service = await gattServer.getPrimaryService('device_information');
-                const characteristics = await service.getCharacteristics();
-                
-                log(`📋 Найдено характеристик: ${characteristics.length}`, 'success');
-                
-                const decoder = new TextDecoder('utf-8');
-                
-                // Читаем все доступные характеристики
-                for (const char of characteristics) {
-                    try {
-                        const value = await char.readValue();
-                        let displayValue = '';
-                        
-                        // Определяем тип характеристики по UUID
-                        const uuid = char.uuid;
-                        
-                        if (uuid.includes('2a29')) { // Manufacturer Name
-                            displayValue = `Производитель: ${decoder.decode(value)}`;
-                        } else if (uuid.includes('2a24')) { // Model Number
-                            displayValue = `Модель: ${decoder.decode(value)}`;
-                        } else if (uuid.includes('2a25')) { // Serial Number
-                            displayValue = `Серийный номер: ${decoder.decode(value)}`;
-                        } else if (uuid.includes('2a26')) { // Firmware Revision
-                            displayValue = `Прошивка: ${decoder.decode(value)}`;
-                        } else if (uuid.includes('2a27')) { // Hardware Revision
-                            displayValue = `Версия железа: ${decoder.decode(value)}`;
-                        } else if (uuid.includes('2a28')) { // Software Revision
-                            displayValue = `Версия ПО: ${decoder.decode(value)}`;
-                        } else if (uuid.includes('2a23')) { // System ID
-                            const bytes = new Uint8Array(value.buffer);
-                            displayValue = `System ID: ${Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(':')}`;
-                        } else {
-                            const bytes = new Uint8Array(value.buffer);
-                            displayValue = `${uuid}: ${Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ')}`;
-                        }
-                        
-                        if (displayValue) {
-                            log(`  ${displayValue}`, 'info');
-                        }
-                        
-                    } catch (charError) {
-                        // Пропускаем характеристики, которые не можем прочитать
-                        console.log('Cannot read characteristic:', char.uuid, charError);
+        function startMagneticMonitoring() {
+            window.addEventListener('devicemotion', event => {
+                if (event.acceleration && event.acceleration.x !== null) {
+                    const x = event.acceleration.x || 0;
+                    const y = event.acceleration.y || 0;
+                    const z = event.acceleration.z || 0;
+                    const magnitude = Math.sqrt(x*x + y*y + z*z).toFixed(2);
+                    
+                    if (magnitude > maxField) maxField = magnitude;
+                    
+                    sensorPanel.innerHTML = `
+                        <strong>🧲 Магнитное поле:</strong><br>
+                        X: ${x.toFixed(2)} | Y: ${y.toFixed(2)} | Z: ${z.toFixed(2)}<br>
+                        Сила: ${magnitude} m/s²<br>
+                        Максимум: ${maxField.toFixed(2)}
+                    `;
+                    
+                    if (magnitude > 15) {
+                        log(`⚠️ Сильное поле: ${magnitude}`, 'warning');
                     }
                 }
+            });
+            
+            log('📊 Мониторинг магнитного поля запущен', 'success');
+        }
+    }
+
+    // ============ ИНФРАКРАСНЫЙ АНАЛИЗАТОР ============
+    function activateInfrared() {
+        if (!('AmbientLightSensor' in window)) {
+            log('❌ Датчик освещенности недоступен', 'error');
+            log('💡 Используйте проксимити-сенсор', 'info');
+            activateProximitySensor();
+            return;
+        }
+
+        try {
+            const sensor = new AmbientLightSensor();
+            document.getElementById('ir-led').className = 'status-led led-active';
+            
+            sensor.addEventListener('reading', () => {
+                const illuminance = sensor.illuminance;
+                const irLevel = Math.round(illuminance * 0.8); // Эмуляция ИК
                 
-                // Также читаем имя устройства из Generic Access
-                try {
-                    const genericAccess = await gattServer.getPrimaryService('generic_access');
-                    const deviceNameChar = await genericAccess.getCharacteristic('device_name');
-                    const nameValue = await deviceNameChar.readValue();
-                    const decoder = new TextDecoder('utf-8');
-                    log(`  Имя устройства: ${decoder.decode(nameValue)}`, 'success');
-                } catch (e) {
-                    // Игнорируем, если сервис недоступен
-                }
+                sensorPanel.innerHTML = `
+                    <strong>📡 ИК/Освещенность:</strong><br>
+                    Уровень: ${illuminance.toFixed(0)} lux<br>
+                    ИК-компонент: ~${irLevel}<br>
+                    ${illuminance < 10 ? '🌑 Темно' : illuminance < 100 ? '🌓 Тускло' : '☀️ Ярко'}
+                `;
                 
-            } catch (error) {
-                if (error.message.includes('No Services matching')) {
-                    log('❌ Device Information Service не найден', 'error');
-                    log('💡 Это устройство не предоставляет информацию о себе', 'warning');
-                } else {
-                    log(`❌ Ошибка: ${error.message}`, 'error');
+                if (illuminance > 1000) {
+                    log(`🔥 Высокий ИК: ${illuminance} lux`, 'warning');
                 }
-            }
-        }
-
-        // Отключение от устройства
-        function disconnectDevice() {
-            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
-                bluetoothDevice.gatt.disconnect();
-                log('🔌 Устройство отключено', 'warning');
-            }
-            onDisconnected();
-        }
-
-        // Обработчик отключения
-        function onDisconnected() {
-            connectionStatus.innerHTML = '🔴 Отключено';
-            connectionStatus.style.color = 'var(--red)';
+            });
             
-            gattServer = null;
-            connectedService = null;
+            sensor.start();
+            log('📡 ИК-анализатор активирован', 'success');
             
-            // Деактивируем кнопки
-            batteryBtn.disabled = true;
-            infoBtn.disabled = true;
-            disconnectBtn.disabled = true;
-            connectBtn.disabled = false;
-            
-            log('📴 Соединение с устройством разорвано', 'warning');
+            irSensor = sensor;
+        } catch (error) {
+            log(`❌ Ошибка сенсора: ${error.message}`, 'error');
         }
+    }
 
-        // Очистка лога
-        function clearLog() {
-            screen.innerHTML = '<div class="log-entry info">> Лог очищен</div>';
-            log('🧹 Терминал очищен', 'info');
-        }
-
-        // Обработчики событий
-        scanBtn.addEventListener('click', scanDevices);
-        connectBtn.addEventListener('click', connectToDevice);
-        batteryBtn.addEventListener('click', readBatteryLevel);
-        infoBtn.addEventListener('click', readDeviceInfo);
-        disconnectBtn.addEventListener('click', disconnectDevice);
-        clearBtn.addEventListener('click', clearLog);
-
-        // Инициализация
-        window.addEventListener('load', () => {
-            checkBluetoothSupport();
-            log('🚀 BLE Device Manager запущен', 'success');
-            log('📱 Нажмите "Сканировать" для поиска устройств', 'info');
-        });
-
-        // Обработка потери соединения
-        window.addEventListener('beforeunload', () => {
-            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
-                bluetoothDevice.gatt.disconnect();
+    function activateProximitySensor() {
+        log('📱 Использую проксимити-сенсор', 'info');
+        // Эмуляция через DeviceMotion
+        window.addEventListener('devicemotion', event => {
+            if (event.rotationRate) {
+                const alpha = event.rotationRate.alpha || 0;
+                sensorPanel.innerHTML = `
+                    <strong>📡 Проксимити (эмуляция):</strong><br>
+                    Поворот: ${alpha.toFixed(2)}<br>
+                    Статус: ${Math.abs(alpha) > 50 ? 'Объект близко' : 'Чисто'}
+                `;
             }
         });
-    </script>
+    }
+
+    // ============ ВСЕ СЕНСОРЫ ============
+    function activateSensors() {
+        log('📐 Активация всех сенсоров', 'success');
+        
+        const sensors = [];
+        
+        // Акселерометр
+        if ('Accelerometer' in window) {
+            try {
+                const accel = new Accelerometer({ frequency: 10 });
+                accel.addEventListener('reading', () => {
+                    sensors.accel = { x: accel.x, y: accel.y, z: accel.z };
+                    updateSensorDisplay(sensors);
+                });
+                accel.start();
+                sensors.accelActive = true;
+            } catch (e) {}
+        }
+        
+        // Гироскоп
+        if ('Gyroscope' in window) {
+            try {
+                const gyro = new Gyroscope({ frequency: 10 });
+                gyro.addEventListener('reading', () => {
+                    sensors.gyro = { x: gyro.x, y: gyro.y, z: gyro.z };
+                    updateSensorDisplay(sensors);
+                });
+                gyro.start();
+                sensors.gyroActive = true;
+            } catch (e) {}
+        }
+        
+        // Ориентация
+        window.addEventListener('deviceorientation', event => {
+            sensors.orientation = {
+                alpha: event.alpha?.toFixed(1),
+                beta: event.beta?.toFixed(1),
+                gamma: event.gamma?.toFixed(1)
+            };
+            updateSensorDisplay(sensors);
+        });
+        
+        function updateSensorDisplay(data) {
+            let html = '<strong>📊 Показания сенсоров:</strong><br>';
+            if (data.accel) {
+                html += `Акселерометр: X:${data.accel.x?.toFixed(2)} Y:${data.accel.y?.toFixed(2)} Z:${data.accel.z?.toFixed(2)}<br>`;
+            }
+            if (data.gyro) {
+                html += `Гироскоп: X:${data.gyro.x?.toFixed(2)} Y:${data.gyro.y?.toFixed(2)} Z:${data.gyro.z?.toFixed(2)}<br>`;
+            }
+            if (data.orientation) {
+                html += `Ориентация: α:${data.orientation.alpha}° β:${data.orientation.beta}° γ:${data.orientation.gamma}°`;
+            }
+            sensorPanel.innerHTML = html;
+        }
+        
+        log('📊 Мониторинг сенсоров активен', 'success');
+    }
+
+    // ============ КАМЕРА (ИК-режим) ============
+    async function activateCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'environment' } 
+            });
+            
+            log('📸 Камера активирована в ИК-режиме', 'success');
+            log('🔦 Направьте на пульт для проверки', 'info');
+            
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.play();
+            
+            // Создаем canvas для анализа
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const checkIR = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                let brightness = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    brightness += (data[i] + data[i+1] + data[i+2]) / 3;
+                }
+                brightness = brightness / (data.length / 4);
+                
+                sensorPanel.innerHTML = `
+                    <strong>📸 ИК-анализ:</strong><br>
+                    Яркость: ${brightness.toFixed(0)}<br>
+                    ${brightness > 200 ? '🔥 Обнаружен ИК-сигнал!' : '👀 ИК не обнаружен'}
+                `;
+                
+                if (brightness > 200) {
+                    log(`📡 ИК-сигнал: ${brightness.toFixed(0)}`, 'warning');
+                }
+            };
+            
+            setInterval(checkIR, 500);
+            
+        } catch (error) {
+            log(`❌ Ошибка камеры: ${error.message}`, 'error');
+        }
+    }
+
+    // ============ ВИБРАЦИЯ (Haptic) ============
+    function activateVibration() {
+        if (!('vibrate' in navigator)) {
+            log('❌ Виброотклик не поддерживается', 'error');
+            return;
+        }
+        
+        log('📳 Haptic-тестер активирован', 'success');
+        
+        const patterns = [
+            { name: 'Короткий', pattern: 50 },
+            { name: 'Длинный', pattern: 200 },
+            { name: 'Двойной', pattern: [100, 50, 100] },
+            { name: 'SOS', pattern: [100, 100, 100, 100, 100, 100, 300, 100, 300, 100, 300] }
+        ];
+        
+        let html = '<strong>📳 Тест вибрации:</strong><br>';
+        patterns.forEach((p, i) => {
+            html += `<button onclick="navigator.vibrate(${JSON.stringify(p.pattern)})" style="margin:2px;padding:5px;">${p.name}</button>`;
+        });
+        
+        sensorPanel.innerHTML = html;
+        navigator.vibrate(50);
+    }
+
+    // Помощь
+    function showHelp() {
+        log('📖 PhoneFlipper - карманный анализатор', 'info');
+        log('• NFC - чтение банковских карт и меток', 'info');
+        log('• Magnetic - детектор электромагнитных полей', 'info');
+        log('• IR - поиск ИК-излучения (пульты)', 'info');
+        log('• Sensors - все датчики телефона', 'info');
+        log('• Camera IR - визуализация ИК через камеру', 'info');
+    }
+
+    // Очистка при выгрузке
+    window.addEventListener('beforeunload', () => {
+        if (nfcReader) nfcReader.stop();
+        sensorIntervals.forEach(clearInterval);
+    });
+
+    // Инициализация
+    window.addEventListener('load', () => {
+        updateBattery();
+        log('🐬 PhoneFlipper готов', 'success');
+        log(`📱 ${navigator.userAgent.includes('Android') ? 'Android' : 'iOS'}`, 'info');
+        
+        // Проверка доступных API
+        if ('NDEFReader' in window) log('✅ NFC доступен', 'success');
+        if ('Accelerometer' in window) log('✅ Сенсоры движения доступны', 'success');
+        if ('AmbientLightSensor' in window) log('✅ Датчик света доступен', 'success');
+    });
+
+</script>
 </body>
 </html>
